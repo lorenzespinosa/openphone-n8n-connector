@@ -1,0 +1,21 @@
+{
+  "id": "evt_def789ghi012",
+  "object": "event",
+  "apiVersion": "v1",
+  "createdAt": "2025-10-15T15:10:45.000Z",
+  "type": "message.received",
+  "data": {
+    "object": "message",
+    "id": "msg_3a4b5c6d7e8f9a0b",
+    "from": "+15555550100",
+    "to": "+15555550200",
+    "direction": "inbound",
+    "body": "Hi, I'd like to schedule a consultation for next week.",
+    "media": [],
+    "status": "received",
+    "createdAt": "2025-10-15T15:10:45.000Z",
+    "userId": "usr_a1b2c3d4e5f6",
+    "phoneNumberId": "phn_1a2b3c4d5e6f",
+    "conversationId": "con_0a1b2c3d4e5f"
+  }
+}

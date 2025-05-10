@@ -1,0 +1,312 @@
+{
+  "name": "Missed Call Recovery",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "openphone-missed-call",
+        "responseMode": "onReceived",
+        "responseData": "allEntries"
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000001",
+      "name": "Webhook: Missed Call",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "openphone-missed-call"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract caller info and check business hours\nconst event = $input.first().json;\n\nconst callerNumber = event.data?.from || event.from || '+15555550100';\nconst calledNumber = event.data?.to || event.to || '+15555550200';\nconst callId = event.data?.id || event.id || 'call_unknown';\nconst timestamp = event.data?.createdAt || event.createdAt || new Date().toISOString();\n\n// Check business hours: Mon-Sat 8AM-7PM ET\nconst callTime = new Date(timestamp);\nconst etOptions = { timeZone: 'America/New_York', hour: 'numeric', weekday: 'short', hour12: false };\nconst etParts = new Intl.DateTimeFormat('en-US', etOptions).formatToParts(callTime);\n\nconst hour = parseInt(etParts.find(p => p.type === 'hour').value);\nconst weekday = etParts.find(p => p.type === 'weekday').value;\n\nconst isBusinessDay = !['Sun'].includes(weekday);\nconst isBusinessHours = hour >= 8 && hour < 19;\nconst withinBusinessHours = isBusinessDay && isBusinessHours;\n\nreturn [{\n  json: {\n    callerNumber,\n    calledNumber,\n    callId,\n    timestamp,\n    withinBusinessHours,\n    hour,\n    weekday\n  }\n}];"
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000002",
+      "name": "Extract Caller Info & Check Hours",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.withinBusinessHours }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000003",
+      "name": "IF: Business Hours",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://your-crm-api.example.com/api/v1/contacts/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "phone",
+              "value": "={{ $json.callerNumber }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000004",
+      "name": "HTTP: Check CRM for Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.results?.length || 0 }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000005",
+      "name": "IF: Existing Contact",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare SMS for existing client\nconst caller = $('Extract Caller Info & Check Hours').first().json;\nreturn [{\n  json: {\n    to: caller.callerNumber,\n    from: caller.calledNumber,\n    body: 'Thanks for calling Greenfield & Associates. We see you\\'re an existing client — we\\'ll return your call shortly.',\n    contactType: 'existing',\n    callId: caller.callId\n  }\n}];"
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000006",
+      "name": "Draft SMS: Existing Client",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare SMS for new caller\nconst caller = $('Extract Caller Info & Check Hours').first().json;\nreturn [{\n  json: {\n    to: caller.callerNumber,\n    from: caller.calledNumber,\n    body: 'Thanks for calling Greenfield & Associates. We\\'ll return your call shortly. If you need immediate assistance, reply to this message.',\n    contactType: 'new',\n    callId: caller.callId\n  }\n}];"
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000007",
+      "name": "Draft SMS: New Caller",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "formTitle": "Approve Missed Call SMS",
+        "formDescription": "Review and approve the outbound SMS before sending.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Recipient",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Message",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Approve",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  { "option": "Yes" },
+                  { "option": "No" }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000008",
+      "name": "Human Approval Gate",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.Approve }}",
+              "value2": "Yes"
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000009",
+      "name": "IF: Approved",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1780, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openphone.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_OPENPHONE_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "from",
+              "value": "={{ $('Draft SMS: New Caller').first().json.from || $('Draft SMS: Existing Client').first().json.from }}"
+            },
+            {
+              "name": "to",
+              "value": "={{ $('Draft SMS: New Caller').first().json.to || $('Draft SMS: Existing Client').first().json.to }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $('Draft SMS: New Caller').first().json.body || $('Draft SMS: Existing Client').first().json.body }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000010",
+      "name": "HTTP: Send SMS via OpenPhone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2000, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.airtable.com/v0/YOUR_BASE_ID/AuditLog",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_AIRTABLE_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"Workflow\": \"Missed Call Recovery\",\n    \"Action\": \"SMS Sent\",\n    \"CallerNumber\": \"{{ $('Extract Caller Info & Check Hours').first().json.callerNumber }}\",\n    \"Timestamp\": \"{{ new Date().toISOString() }}\",\n    \"Status\": \"Completed\"\n  }\n}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000011",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Queue missed call for next business day follow-up\nconst caller = $input.first().json;\nreturn [{\n  json: {\n    ...caller,\n    action: 'queued_for_next_business_day',\n    reason: 'Outside business hours'\n  }\n}];"
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000012",
+      "name": "Queue for Next Business Day",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 450]
+    }
+  ],
+  "connections": {
+    "Webhook: Missed Call": {
+      "main": [
+        [{ "node": "Extract Caller Info & Check Hours", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Caller Info & Check Hours": {
+      "main": [
+        [{ "node": "IF: Business Hours", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF: Business Hours": {
+      "main": [
+        [{ "node": "HTTP: Check CRM for Contact", "type": "main", "index": 0 }],
+        [{ "node": "Queue for Next Business Day", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP: Check CRM for Contact": {
+      "main": [
+        [{ "node": "IF: Existing Contact", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF: Existing Contact": {
+      "main": [
+        [{ "node": "Draft SMS: Existing Client", "type": "main", "index": 0 }],
+        [{ "node": "Draft SMS: New Caller", "type": "main", "index": 0 }]
+      ]
+    },
+    "Draft SMS: Existing Client": {
+      "main": [
+        [{ "node": "Human Approval Gate", "type": "main", "index": 0 }]
+      ]
+    },
+    "Draft SMS: New Caller": {
+      "main": [
+        [{ "node": "Human Approval Gate", "type": "main", "index": 0 }]
+      ]
+    },
+    "Human Approval Gate": {
+      "main": [
+        [{ "node": "IF: Approved", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF: Approved": {
+      "main": [
+        [{ "node": "HTTP: Send SMS via OpenPhone", "type": "main", "index": 0 }],
+        [{ "node": "Audit Log", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP: Send SMS via OpenPhone": {
+      "main": [
+        [{ "node": "Audit Log", "type": "main", "index": 0 }]
+      ]
+    },
+    "Queue for Next Business Day": {
+      "main": [
+        [{ "node": "Audit Log", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "openphone" },
+    { "name": "missed-call" },
+    { "name": "sms" }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-15T10:00:00.000Z",
+  "versionId": "1",
+  "active": false
+}

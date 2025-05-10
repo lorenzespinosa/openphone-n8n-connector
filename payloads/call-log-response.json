@@ -1,0 +1,63 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "call",
+      "id": "call_001abc",
+      "from": "+15555550100",
+      "to": "+15555550200",
+      "direction": "inbound",
+      "status": "completed",
+      "duration": 184,
+      "createdAt": "2025-10-15T14:00:00.000Z",
+      "answeredAt": "2025-10-15T14:00:05.000Z",
+      "completedAt": "2025-10-15T14:03:04.000Z",
+      "userId": "usr_a1b2c3d4e5f6",
+      "phoneNumberId": "phn_1a2b3c4d5e6f"
+    },
+    {
+      "object": "call",
+      "id": "call_002def",
+      "from": "+15555550300",
+      "to": "+15555550200",
+      "direction": "inbound",
+      "status": "missed",
+      "duration": 0,
+      "createdAt": "2025-10-15T14:05:00.000Z",
+      "answeredAt": null,
+      "completedAt": "2025-10-15T14:05:22.000Z",
+      "userId": "usr_a1b2c3d4e5f6",
+      "phoneNumberId": "phn_1a2b3c4d5e6f"
+    },
+    {
+      "object": "call",
+      "id": "call_003ghi",
+      "from": "+15555550200",
+      "to": "+15555550400",
+      "direction": "outbound",
+      "status": "completed",
+      "duration": 312,
+      "createdAt": "2025-10-15T14:10:00.000Z",
+      "answeredAt": "2025-10-15T14:10:08.000Z",
+      "completedAt": "2025-10-15T14:15:12.000Z",
+      "userId": "usr_a1b2c3d4e5f6",
+      "phoneNumberId": "phn_1a2b3c4d5e6f"
+    },
+    {
+      "object": "call",
+      "id": "call_004jkl",
+      "from": "+15555550300",
+      "to": "+15555550200",
+      "direction": "inbound",
+      "status": "missed",
+      "duration": 0,
+      "createdAt": "2025-10-15T14:12:00.000Z",
+      "answeredAt": null,
+      "completedAt": "2025-10-15T14:12:30.000Z",
+      "userId": "usr_a1b2c3d4e5f6",
+      "phoneNumberId": "phn_1a2b3c4d5e6f"
+    }
+  ],
+  "hasMore": false,
+  "totalCount": 4
+}

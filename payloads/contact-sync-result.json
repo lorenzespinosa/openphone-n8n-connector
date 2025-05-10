@@ -1,0 +1,57 @@
+{
+  "syncTimestamp": "2025-10-15T02:00:00.000Z",
+  "summary": {
+    "openphoneContactsProcessed": 142,
+    "crmContactsProcessed": 318,
+    "newInOpenphone": 3,
+    "updatedInCrm": 7,
+    "conflicts": 2,
+    "noChanges": 130,
+    "resolution": "crm_wins"
+  },
+  "actions": [
+    {
+      "action": "create_in_crm",
+      "phone": "+15555550500",
+      "name": "Jane Smith",
+      "email": "jane.smith@example.com",
+      "source": "openphone",
+      "status": "success"
+    },
+    {
+      "action": "create_in_crm",
+      "phone": "+15555550600",
+      "name": "Robert Johnson",
+      "email": null,
+      "source": "openphone",
+      "status": "success"
+    },
+    {
+      "action": "create_in_crm",
+      "phone": "+15555550700",
+      "name": "Maria Garcia",
+      "email": "maria.garcia@example.com",
+      "source": "openphone",
+      "status": "success"
+    },
+    {
+      "action": "update_in_openphone",
+      "phone": "+15555550100",
+      "crmName": "John A. Doe",
+      "opName": "John Doe",
+      "resolvedName": "John A. Doe",
+      "resolution": "crm_wins",
+      "status": "success"
+    },
+    {
+      "action": "update_in_openphone",
+      "phone": "+15555550300",
+      "crmName": "Sarah Williams-Turner",
+      "opName": "Sarah Williams",
+      "resolvedName": "Sarah Williams-Turner",
+      "resolution": "crm_wins",
+      "status": "success"
+    }
+  ],
+  "errors": []
+}

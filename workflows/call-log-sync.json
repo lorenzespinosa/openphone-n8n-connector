@@ -1,0 +1,209 @@
+{
+  "name": "Call Log Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "c3d4e5f6-3333-4ccc-dddd-000000000001",
+      "name": "Schedule: Every 15 Min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.openphone.com/v1/calls",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_OPENPHONE_API_KEY"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "createdAfter",
+              "value": "={{ new Date(Date.now() - 15 * 60 * 1000).toISOString() }}"
+            },
+            {
+              "name": "maxResults",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c3d4e5f6-3333-4ccc-dddd-000000000002",
+      "name": "HTTP: Get Recent Calls",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format call records for Airtable\nconst response = $input.first().json;\nconst calls = response.data || [];\n\nreturn calls.map(call => ({\n  json: {\n    callId: call.id || 'call_unknown',\n    direction: call.direction || 'unknown',\n    from: call.from || '+15555550100',\n    to: call.to || '+15555550200',\n    status: call.status || 'completed',\n    duration: call.duration || 0,\n    durationFormatted: `${Math.floor((call.duration || 0) / 60)}m ${(call.duration || 0) % 60}s`,\n    createdAt: call.createdAt || new Date().toISOString(),\n    answeredAt: call.answeredAt || null,\n    completedAt: call.completedAt || null,\n    isMissed: call.status === 'missed' || call.status === 'no-answer',\n    callerNumber: call.direction === 'inbound' ? call.from : call.to\n  }\n}));"
+      },
+      "id": "c3d4e5f6-3333-4ccc-dddd-000000000003",
+      "name": "Format Call Records",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.airtable.com/v0/YOUR_BASE_ID/CallLog",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_AIRTABLE_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"CallID\": \"{{ $json.callId }}\",\n    \"Direction\": \"{{ $json.direction }}\",\n    \"From\": \"{{ $json.from }}\",\n    \"To\": \"{{ $json.to }}\",\n    \"Status\": \"{{ $json.status }}\",\n    \"Duration\": {{ $json.duration }},\n    \"DurationFormatted\": \"{{ $json.durationFormatted }}\",\n    \"CreatedAt\": \"{{ $json.createdAt }}\",\n    \"IsMissed\": {{ $json.isMissed }}\n  }\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 10,
+              "batchInterval": 500
+            }
+          }
+        }
+      },
+      "id": "c3d4e5f6-3333-4ccc-dddd-000000000004",
+      "name": "HTTP: Write to Airtable",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flag repeat missed calls: 2+ from same number in 24 hours\n// This is a simplified check — in production, query Airtable for last 24hrs\nconst items = $input.all();\nconst missedCalls = items.filter(item => item.json.isMissed);\n\n// Group missed calls by caller number\nconst missedByNumber = {};\nfor (const call of missedCalls) {\n  const num = call.json.callerNumber || call.json.from;\n  if (!missedByNumber[num]) missedByNumber[num] = [];\n  missedByNumber[num].push(call.json);\n}\n\n// Find numbers with 2+ missed calls\nconst urgentFollowUps = Object.entries(missedByNumber)\n  .filter(([_, calls]) => calls.length >= 2)\n  .map(([number, calls]) => ({\n    json: {\n      callerNumber: number,\n      missedCallCount: calls.length,\n      lastMissedAt: calls[calls.length - 1].createdAt,\n      alertMessage: `Urgent: ${number} has ${calls.length} missed calls in the last 24 hours. Immediate follow-up needed.`,\n      requiresAlert: true\n    }\n  }));\n\nif (urgentFollowUps.length === 0) {\n  return [{ json: { requiresAlert: false, message: 'No repeat missed calls detected' } }];\n}\n\nreturn urgentFollowUps;"
+      },
+      "id": "c3d4e5f6-3333-4ccc-dddd-000000000005",
+      "name": "Flag Repeat Missed Calls",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.requiresAlert }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "c3d4e5f6-3333-4ccc-dddd-000000000006",
+      "name": "IF: Needs Slack Alert",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \":phone: *Repeat Missed Call Alert*\\n{{ $json.alertMessage }}\\n\\nLast missed: {{ $json.lastMissedAt }}\",\n  \"channel\": \"#missed-calls\"\n}",
+        "options": {}
+      },
+      "id": "c3d4e5f6-3333-4ccc-dddd-000000000007",
+      "name": "Slack: Urgent Follow-Up Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// No alert needed — done\nreturn [{ json: { status: 'complete', alertsSent: 0 } }];"
+      },
+      "id": "c3d4e5f6-3333-4ccc-dddd-000000000008",
+      "name": "Done",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 400]
+    }
+  ],
+  "connections": {
+    "Schedule: Every 15 Min": {
+      "main": [
+        [{ "node": "HTTP: Get Recent Calls", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP: Get Recent Calls": {
+      "main": [
+        [{ "node": "Format Call Records", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Call Records": {
+      "main": [
+        [{ "node": "HTTP: Write to Airtable", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP: Write to Airtable": {
+      "main": [
+        [{ "node": "Flag Repeat Missed Calls", "type": "main", "index": 0 }]
+      ]
+    },
+    "Flag Repeat Missed Calls": {
+      "main": [
+        [{ "node": "IF: Needs Slack Alert", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF: Needs Slack Alert": {
+      "main": [
+        [{ "node": "Slack: Urgent Follow-Up Alert", "type": "main", "index": 0 }],
+        [{ "node": "Done", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "openphone" },
+    { "name": "call-log" },
+    { "name": "airtable" }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-15T10:00:00.000Z",
+  "versionId": "1",
+  "active": false
+}

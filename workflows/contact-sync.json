@@ -1,0 +1,290 @@
+{
+  "name": "Contact Sync — OpenPhone ↔ CRM",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "d4e5f6a7-4444-4ddd-eeee-000000000001",
+      "name": "Schedule: Daily 2AM ET",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.openphone.com/v1/contacts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_OPENPHONE_API_KEY"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "maxResults",
+              "value": "500"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d4e5f6a7-4444-4ddd-eeee-000000000002",
+      "name": "HTTP: Get OpenPhone Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://your-crm-api.example.com/api/v1/contacts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_CRM_API_KEY"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "500"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d4e5f6a7-4444-4ddd-eeee-000000000003",
+      "name": "HTTP: Get CRM Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 450]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Merge and compare contacts from both sources\n// This node receives data from both HTTP nodes via a Merge node\nconst item = $input.item.json;\nreturn item;"
+      },
+      "id": "d4e5f6a7-4444-4ddd-eeee-000000000040",
+      "name": "Passthrough",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compare OpenPhone contacts vs CRM contacts and find mismatches\nconst opContacts = $('HTTP: Get OpenPhone Contacts').first().json.data || [];\nconst crmContacts = $('HTTP: Get CRM Contacts').first().json.data || [];\n\n// Normalize phone numbers for comparison\nfunction normalizePhone(phone) {\n  if (!phone) return '';\n  return phone.replace(/[^\\d+]/g, '');\n}\n\n// Build lookup maps\nconst crmByPhone = {};\nfor (const c of crmContacts) {\n  const phone = normalizePhone(c.phone || c.phoneNumber || '');\n  if (phone) crmByPhone[phone] = c;\n}\n\nconst opByPhone = {};\nfor (const c of opContacts) {\n  const phones = c.phoneNumbers || [{ value: c.phone }];\n  for (const p of phones) {\n    const phone = normalizePhone(p.value || p);\n    if (phone) opByPhone[phone] = c;\n  }\n}\n\nconst results = [];\n\n// Find contacts in OpenPhone but not in CRM (new)\nfor (const [phone, opContact] of Object.entries(opByPhone)) {\n  if (!crmByPhone[phone]) {\n    results.push({\n      json: {\n        action: 'create_in_crm',\n        phone,\n        name: opContact.firstName ? `${opContact.firstName} ${opContact.lastName || ''}`.trim() : opContact.name || 'Unknown',\n        email: opContact.email || opContact.emails?.[0]?.value || null,\n        source: 'openphone'\n      }\n    });\n  }\n}\n\n// Find contacts updated in CRM that need sync to OpenPhone\nfor (const [phone, crmContact] of Object.entries(crmByPhone)) {\n  if (opByPhone[phone]) {\n    const opContact = opByPhone[phone];\n    const crmName = crmContact.name || `${crmContact.firstName || ''} ${crmContact.lastName || ''}`.trim();\n    const opName = opContact.name || `${opContact.firstName || ''} ${opContact.lastName || ''}`.trim();\n    \n    if (crmName !== opName) {\n      results.push({\n        json: {\n          action: 'update_in_openphone',\n          phone,\n          crmName,\n          opName,\n          resolvedName: crmName,\n          resolution: 'crm_wins',\n          openphoneContactId: opContact.id || null,\n          source: 'crm'\n        }\n      });\n    }\n  }\n}\n\nif (results.length === 0) {\n  return [{ json: { action: 'no_changes', message: 'All contacts are in sync' } }];\n}\n\nreturn results;"
+      },
+      "id": "d4e5f6a7-4444-4ddd-eeee-000000000004",
+      "name": "Compare & Find Mismatches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.action }}",
+              "value2": "create_in_crm"
+            }
+          ]
+        }
+      },
+      "id": "d4e5f6a7-4444-4ddd-eeee-000000000005",
+      "name": "IF: New in OpenPhone",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://your-crm-api.example.com/api/v1/contacts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_CRM_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"name\": \"{{ $json.name }}\",\n  \"phone\": \"{{ $json.phone }}\",\n  \"email\": \"{{ $json.email }}\",\n  \"source\": \"OpenPhone Sync\"\n}",
+        "options": {}
+      },
+      "id": "d4e5f6a7-4444-4ddd-eeee-000000000006",
+      "name": "HTTP: Create in CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.action }}",
+              "value2": "update_in_openphone"
+            }
+          ]
+        }
+      },
+      "id": "d4e5f6a7-4444-4ddd-eeee-000000000007",
+      "name": "IF: Updated in CRM",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1120, 450]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.openphone.com/v1/contacts/{{ $json.openphoneContactId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_OPENPHONE_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"firstName\": \"{{ $json.resolvedName.split(' ')[0] }}\",\n  \"lastName\": \"{{ $json.resolvedName.split(' ').slice(1).join(' ') }}\"\n}",
+        "options": {}
+      },
+      "id": "d4e5f6a7-4444-4ddd-eeee-000000000008",
+      "name": "HTTP: Update in OpenPhone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.airtable.com/v0/YOUR_BASE_ID/ContactSyncLog",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_AIRTABLE_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"Workflow\": \"Contact Sync\",\n    \"Action\": \"{{ $json.action || 'sync_check' }}\",\n    \"Phone\": \"{{ $json.phone || 'n/a' }}\",\n    \"Resolution\": \"{{ $json.resolution || 'n/a' }}\",\n    \"Timestamp\": \"{{ new Date().toISOString() }}\",\n    \"Status\": \"Completed\"\n  }\n}",
+        "options": {}
+      },
+      "id": "d4e5f6a7-4444-4ddd-eeee-000000000009",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 300]
+    }
+  ],
+  "connections": {
+    "Schedule: Daily 2AM ET": {
+      "main": [
+        [
+          { "node": "HTTP: Get OpenPhone Contacts", "type": "main", "index": 0 },
+          { "node": "HTTP: Get CRM Contacts", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "HTTP: Get OpenPhone Contacts": {
+      "main": [
+        [{ "node": "Passthrough", "type": "main", "index": 0 }]
+      ]
+    },
+    "Passthrough": {
+      "main": [
+        [{ "node": "Compare & Find Mismatches", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP: Get CRM Contacts": {
+      "main": [
+        [{ "node": "Compare & Find Mismatches", "type": "main", "index": 0 }]
+      ]
+    },
+    "Compare & Find Mismatches": {
+      "main": [
+        [
+          { "node": "IF: New in OpenPhone", "type": "main", "index": 0 },
+          { "node": "IF: Updated in CRM", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "IF: New in OpenPhone": {
+      "main": [
+        [{ "node": "HTTP: Create in CRM", "type": "main", "index": 0 }],
+        [{ "node": "Audit Log", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP: Create in CRM": {
+      "main": [
+        [{ "node": "Audit Log", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF: Updated in CRM": {
+      "main": [
+        [{ "node": "HTTP: Update in OpenPhone", "type": "main", "index": 0 }],
+        [{ "node": "Audit Log", "type": "main", "index": 0 }]
+      ]
+    },
+    "HTTP: Update in OpenPhone": {
+      "main": [
+        [{ "node": "Audit Log", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "openphone" },
+    { "name": "contact-sync" },
+    { "name": "crm" }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-15T10:00:00.000Z",
+  "versionId": "1",
+  "active": false
+}
