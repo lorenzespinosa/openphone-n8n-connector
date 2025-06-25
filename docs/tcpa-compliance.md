@@ -128,3 +128,10 @@ Phone numbers get reassigned. A number that gave consent 2 years ago may belong 
 ## Disclaimer
 
 This guide is for informational purposes to support automation design. It is not legal advice. Consult with your firm's compliance team or a TCPA attorney before deploying any automated messaging system.
+
+## State-Specific Rules
+
+Florida has additional requirements beyond federal TCPA:
+- Florida Telephone Solicitation Act (FTSA) — stricter than federal
+- Prior express written consent required for automated texts
+-  per violation (Florida), ,500 per violation (federal TCPA)
