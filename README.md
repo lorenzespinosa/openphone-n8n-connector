@@ -171,3 +171,10 @@ openphone-n8n-connector/
 ## License
 
 MIT License. See [LICENSE](LICENSE).
+
+## Rate Limits
+
+OpenPhone API has rate limits. These workflows respect them:
+- Call log sync: runs every 15 min (well under limits)
+- Contact sync: runs daily (batched)
+- SMS: human-gated (natural rate limiting)
