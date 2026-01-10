@@ -54,3 +54,10 @@ All notable changes to this project will be documented in this file.
 - README with Mermaid flow diagrams
 - MIT License
 - .gitignore for n8n projects
+
+## [0.4.0] - 2026-01-10
+
+### Added
+- Florida-specific TCPA documentation
+- Rate limits documentation
+- Improved error messages in all workflows
