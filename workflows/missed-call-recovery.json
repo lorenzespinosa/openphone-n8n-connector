@@ -12,7 +12,10 @@
       "name": "Webhook: Missed Call",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "openphone-missed-call"
     },
     {
@@ -23,7 +26,10 @@
       "name": "Extract Caller Info & Check Hours",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
@@ -40,7 +46,10 @@
       "name": "IF: Business Hours",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [680, 300]
+      "position": [
+        680,
+        300
+      ]
     },
     {
       "parameters": {
@@ -61,7 +70,10 @@
       "name": "HTTP: Check CRM for Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [900, 200]
+      "position": [
+        900,
+        200
+      ]
     },
     {
       "parameters": {
@@ -79,17 +91,23 @@
       "name": "IF: Existing Contact",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [1120, 200]
+      "position": [
+        1120,
+        200
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Prepare SMS for existing client\nconst caller = $('Extract Caller Info & Check Hours').first().json;\nreturn [{\n  json: {\n    to: caller.callerNumber,\n    from: caller.calledNumber,\n    body: 'Thanks for calling Greenfield & Associates. We see you\\'re an existing client — we\\'ll return your call shortly.',\n    contactType: 'existing',\n    callId: caller.callId\n  }\n}];"
+        "jsCode": "// Prepare SMS for existing client\nconst caller = $('Extract Caller Info & Check Hours').first().json;\nreturn [{\n  json: {\n    to: caller.callerNumber,\n    from: caller.calledNumber,\n    body: 'Thanks for calling Greenfield & Associates. We see you\\'re an existing client \u2014 we\\'ll return your call shortly.',\n    contactType: 'existing',\n    callId: caller.callId\n  }\n}];"
       },
       "id": "a1b2c3d4-1111-4aaa-bbbb-000000000006",
       "name": "Draft SMS: Existing Client",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 100]
+      "position": [
+        1340,
+        100
+      ]
     },
     {
       "parameters": {
@@ -99,7 +117,10 @@
       "name": "Draft SMS: New Caller",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 300]
+      "position": [
+        1340,
+        300
+      ]
     },
     {
       "parameters": {
@@ -122,8 +143,12 @@
               "fieldType": "dropdown",
               "fieldOptions": {
                 "values": [
-                  { "option": "Yes" },
-                  { "option": "No" }
+                  {
+                    "option": "Yes"
+                  },
+                  {
+                    "option": "No"
+                  }
                 ]
               },
               "requiredField": true
@@ -135,7 +160,10 @@
       "name": "Human Approval Gate",
       "type": "n8n-nodes-base.form",
       "typeVersion": 2,
-      "position": [1560, 200]
+      "position": [
+        1560,
+        200
+      ]
     },
     {
       "parameters": {
@@ -152,7 +180,10 @@
       "name": "IF: Approved",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [1780, 200]
+      "position": [
+        1780,
+        200
+      ]
     },
     {
       "parameters": {
@@ -163,7 +194,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer YOUR_OPENPHONE_API_KEY"
+              "value": "={{$env.OPENPHONE_API_KEY}}"
             },
             {
               "name": "Content-Type",
@@ -172,29 +203,21 @@
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "from",
-              "value": "={{ $('Draft SMS: New Caller').first().json.from || $('Draft SMS: Existing Client').first().json.from }}"
-            },
-            {
-              "name": "to",
-              "value": "={{ $('Draft SMS: New Caller').first().json.to || $('Draft SMS: Existing Client').first().json.to }}"
-            },
-            {
-              "name": "body",
-              "value": "={{ $('Draft SMS: New Caller').first().json.body || $('Draft SMS: Existing Client').first().json.body }}"
-            }
-          ]
-        },
-        "options": {}
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ from: $json.from, to: [$json.to], content: $json.message }) }}",
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "a1b2c3d4-1111-4aaa-bbbb-000000000010",
       "name": "HTTP: Send SMS via OpenPhone",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [2000, 100]
+      "position": [
+        2000,
+        100
+      ],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -222,7 +245,10 @@
       "name": "Audit Log",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [2220, 300]
+      "position": [
+        2220,
+        300
+      ]
     },
     {
       "parameters": {
@@ -232,66 +258,153 @@
       "name": "Queue for Next Business Day",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 450]
+      "position": [
+        900,
+        450
+      ]
     }
   ],
   "connections": {
     "Webhook: Missed Call": {
       "main": [
-        [{ "node": "Extract Caller Info & Check Hours", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Extract Caller Info & Check Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Extract Caller Info & Check Hours": {
       "main": [
-        [{ "node": "IF: Business Hours", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "IF: Business Hours",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "IF: Business Hours": {
       "main": [
-        [{ "node": "HTTP: Check CRM for Contact", "type": "main", "index": 0 }],
-        [{ "node": "Queue for Next Business Day", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "HTTP: Check CRM for Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Queue for Next Business Day",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "HTTP: Check CRM for Contact": {
       "main": [
-        [{ "node": "IF: Existing Contact", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "IF: Existing Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "IF: Existing Contact": {
       "main": [
-        [{ "node": "Draft SMS: Existing Client", "type": "main", "index": 0 }],
-        [{ "node": "Draft SMS: New Caller", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Draft SMS: Existing Client",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Draft SMS: New Caller",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Draft SMS: Existing Client": {
       "main": [
-        [{ "node": "Human Approval Gate", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Human Approval Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Draft SMS: New Caller": {
       "main": [
-        [{ "node": "Human Approval Gate", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Human Approval Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Human Approval Gate": {
       "main": [
-        [{ "node": "IF: Approved", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "IF: Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "IF: Approved": {
       "main": [
-        [{ "node": "HTTP: Send SMS via OpenPhone", "type": "main", "index": 0 }],
-        [{ "node": "Audit Log", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "HTTP: Send SMS via OpenPhone",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "HTTP: Send SMS via OpenPhone": {
       "main": [
-        [{ "node": "Audit Log", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Queue for Next Business Day": {
       "main": [
-        [{ "node": "Audit Log", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -301,9 +414,15 @@
   },
   "staticData": null,
   "tags": [
-    { "name": "openphone" },
-    { "name": "missed-call" },
-    { "name": "sms" }
+    {
+      "name": "openphone"
+    },
+    {
+      "name": "missed-call"
+    },
+    {
+      "name": "sms"
+    }
   ],
   "triggerCount": 1,
   "updatedAt": "2025-11-15T10:00:00.000Z",

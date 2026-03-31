@@ -134,4 +134,4 @@ This guide is for informational purposes to support automation design. It is not
 Florida has additional requirements beyond federal TCPA:
 - Florida Telephone Solicitation Act (FTSA) — stricter than federal
 - Prior express written consent required for automated texts
--  per violation (Florida), ,500 per violation (federal TCPA)
+- $500 per violation (Florida), $1,500 per violation (federal TCPA)
