@@ -51,13 +51,9 @@ Every workflow must include:
 - Use `555`-prefix phone numbers in any hardcoded examples
 - Ensure the JSON is valid and importable (test by importing into a fresh n8n instance)
 
-### TCPA Compliance
+### SMS-related contributions
 
-If your workflow sends SMS:
-- STOP/UNSUBSCRIBE keyword detection is mandatory
-- Human approval gate before any outbound message
-- Business hours check (Mon-Sat 8AM-7PM ET)
-- See `docs/tcpa-compliance.md` for full requirements
+If you propose an SMS workflow, document the intended consent and opt-out checks, the approval step, and the tests for both allowed and blocked messages. See `docs/tcpa-compliance.md` for this repository's example limitations. Determine applicable legal requirements with a qualified reviewer; these files are not compliance guidance.
 
 ### Commit Messages
 

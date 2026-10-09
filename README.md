@@ -1,13 +1,13 @@
 # OpenPhone + n8n Connector
 
-A collection of production-ready n8n workflows for integrating [OpenPhone](https://www.openphone.com/) with CRM, Airtable, Slack, and AI services. Built for law firms and professional services teams that need reliable phone automation with TCPA compliance baked in.
+Example n8n workflows for [OpenPhone](https://www.openphone.com/) events and connected systems. They are examples and have not been independently reviewed for deployment or legal compliance; review consent and approval handling before any outbound message.
 
 ## Architecture Overview
 
 ```mermaid
 graph LR
     OP[OpenPhone] -->|Webhooks| N8N[n8n]
-    N8N -->|API| CRM[CRM / Lawmatics]
+    N8N -->|API| CRM[CRM]
     N8N -->|API| AT[Airtable]
     N8N -->|API| SL[Slack]
     N8N -->|API| AI[OpenAI]
@@ -25,7 +25,7 @@ graph LR
 
 ### 1. Missed Call Recovery
 
-Automatically detects missed calls, checks business hours, identifies if the caller is a known contact, and sends a recovery SMS — with human approval before any message goes out.
+The example sketches missed-call handling and a proposed SMS. A real blocking approval and consent check must be verified separately before any send.
 
 ```mermaid
 flowchart TD
@@ -36,7 +36,7 @@ flowchart TD
     D --> F{New or Existing?}
     F -->|New| G[Draft SMS: New Caller Template]
     F -->|Existing| H[Draft SMS: Existing Client Template]
-    G --> I[Human Approval Gate]
+    G --> I[Approval point (implementation to verify)]
     H --> I
     I -->|Approved| J[Send SMS via OpenPhone API]
     I -->|Rejected| K[Log: Skipped]
@@ -51,7 +51,7 @@ flowchart TD
 
 ### 2. SMS Auto-Responder
 
-Handles inbound SMS with TCPA-compliant opt-out detection, AI-powered intent classification, and templated responses routed by intent.
+The example sketches an opt-out branch, classification and draft responses. That flow alone does not establish consent or regulatory compliance.
 
 ```mermaid
 flowchart TD
@@ -65,7 +65,7 @@ flowchart TD
     H -->|Appointment Request| I[Appointment Template]
     H -->|Case Status| J[Case Status Template]
     H -->|General Inquiry| K[General Template]
-    I --> L[Human Approval Gate]
+    I --> L[Approval point (implementation to verify)]
     J --> L
     K --> L
     F --> L
@@ -121,17 +121,9 @@ flowchart TD
 
 ---
 
-## TCPA Compliance
+## Messaging safety and legal review
 
-All SMS workflows include mandatory TCPA safeguards:
-
-- **STOP/UNSUBSCRIBE handling** — Immediate opt-out, no further messages sent
-- **Business hours only** — Mon-Sat 8AM-7PM ET (no Sundays)
-- **Human approval gates** — No automated outbound SMS without review
-- **Consent tracking** — Logged in Airtable audit trail
-- **Penalties** — Up to $1,500 per non-compliant message
-
-See [`docs/tcpa-compliance.md`](docs/tcpa-compliance.md) for the full guide.
+These workflow diagrams are examples, not a compliance determination. Opt-out handling, hours, logging and an illustrated approval point do not by themselves establish consent or a working blocking review step. The separate `docs/tcpa-compliance.md` page is also unreviewed and must not be treated as current legal guidance without a dedicated review.
 
 ---
 
@@ -182,10 +174,8 @@ OpenPhone API has rate limits. These workflows respect them:
 ---
 
 <!-- hire-cta -->
-## 👋 Built by Lorenz Espinosa
+## About Lorenz
 
-I design and ship production automation for ops-heavy businesses — webhook-driven, AI-powered systems with validation, retries, and audit logging baked in. **50+ processes automated · $800K+ saved.**
+I'm Lorenz Espinosa, an IT systems and automation consultant. This repository is public example material, not a record of client systems or results.
 
-**Want something like this built for your team?**
-
-[![See more work](https://img.shields.io/badge/See%20more%20work-0d1117?style=flat-square&logo=github&logoColor=7aa2f7)](https://github.com/lorenzespinosa) &nbsp;[![Start a project](https://img.shields.io/badge/Start%20a%20project%20%E2%86%92-0d1117?style=for-the-badge&logo=gmail&logoColor=9ece6a)](mailto:renzespinosa13@gmail.com?subject=Automation%20project%20inquiry&body=Hi%20Lorenz%2C%0A%0AGoal%3A%0ASystems%2Ftools%20involved%3A%0ATimeline%3A%0A) &nbsp;[![Connect on LinkedIn](https://img.shields.io/badge/Connect-0d1117?style=flat-square&logo=linkedin&logoColor=7aa2f7)](https://www.linkedin.com/in/lorenz-leslie-espinosa/)
+For a general inquiry, please leave out client names, records and confidential details: [Email](mailto:renzespinosa13@gmail.com) · [Portfolio](https://lorenzespinosa.github.io/) · [LinkedIn](https://www.linkedin.com/in/lorenz-leslie-espinosa/).

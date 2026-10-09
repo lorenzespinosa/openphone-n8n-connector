@@ -33,7 +33,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Missed call recovery now includes human approval gate before sending SMS
-- Added opt-out list checking to all SMS-sending workflows
+- Correction: the current missed-call example does not independently query opt-out status before its send step; the earlier all-workflows statement is withdrawn.
 
 ### Fixed
 - Webhook node response mode set to `onReceived` to prevent OpenPhone timeouts
