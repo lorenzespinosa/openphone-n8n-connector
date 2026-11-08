@@ -1,4 +1,4 @@
-# OpenPhone + n8n Connector
+# openphone-n8n-connector
 
 Example n8n workflows for [OpenPhone](https://www.openphone.com/) events and connected systems. They are examples and have not been independently reviewed for deployment or legal compliance; review consent and approval handling before any outbound message.
 
